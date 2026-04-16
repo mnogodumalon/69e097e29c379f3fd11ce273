@@ -1,25 +1,25 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Mitarbeiter, Schichttypen, Schichtplanung } from '@/types/app';
+import type { Schichttypen, Schichtplanung, Mitarbeiter } from '@/types/app';
 import { LivingAppsService } from '@/services/livingAppsService';
 
 export function useDashboardData() {
-  const [mitarbeiter, setMitarbeiter] = useState<Mitarbeiter[]>([]);
   const [schichttypen, setSchichttypen] = useState<Schichttypen[]>([]);
   const [schichtplanung, setSchichtplanung] = useState<Schichtplanung[]>([]);
+  const [mitarbeiter, setMitarbeiter] = useState<Mitarbeiter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchAll = useCallback(async () => {
     setError(null);
     try {
-      const [mitarbeiterData, schichttypenData, schichtplanungData] = await Promise.all([
-        LivingAppsService.getMitarbeiter(),
+      const [schichttypenData, schichtplanungData, mitarbeiterData] = await Promise.all([
         LivingAppsService.getSchichttypen(),
         LivingAppsService.getSchichtplanung(),
+        LivingAppsService.getMitarbeiter(),
       ]);
-      setMitarbeiter(mitarbeiterData);
       setSchichttypen(schichttypenData);
       setSchichtplanung(schichtplanungData);
+      setMitarbeiter(mitarbeiterData);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Fehler beim Laden der Daten'));
     } finally {
@@ -33,14 +33,14 @@ export function useDashboardData() {
   useEffect(() => {
     async function silentRefresh() {
       try {
-        const [mitarbeiterData, schichttypenData, schichtplanungData] = await Promise.all([
-          LivingAppsService.getMitarbeiter(),
+        const [schichttypenData, schichtplanungData, mitarbeiterData] = await Promise.all([
           LivingAppsService.getSchichttypen(),
           LivingAppsService.getSchichtplanung(),
+          LivingAppsService.getMitarbeiter(),
         ]);
-        setMitarbeiter(mitarbeiterData);
         setSchichttypen(schichttypenData);
         setSchichtplanung(schichtplanungData);
+        setMitarbeiter(mitarbeiterData);
       } catch {
         // silently ignore — stale data is better than no data
       }
@@ -50,17 +50,17 @@ export function useDashboardData() {
     return () => window.removeEventListener('dashboard-refresh', handleRefresh);
   }, []);
 
-  const mitarbeiterMap = useMemo(() => {
-    const m = new Map<string, Mitarbeiter>();
-    mitarbeiter.forEach(r => m.set(r.record_id, r));
-    return m;
-  }, [mitarbeiter]);
-
   const schichttypenMap = useMemo(() => {
     const m = new Map<string, Schichttypen>();
     schichttypen.forEach(r => m.set(r.record_id, r));
     return m;
   }, [schichttypen]);
 
-  return { mitarbeiter, setMitarbeiter, schichttypen, setSchichttypen, schichtplanung, setSchichtplanung, loading, error, fetchAll, mitarbeiterMap, schichttypenMap };
+  const mitarbeiterMap = useMemo(() => {
+    const m = new Map<string, Mitarbeiter>();
+    mitarbeiter.forEach(r => m.set(r.record_id, r));
+    return m;
+  }, [mitarbeiter]);
+
+  return { schichttypen, setSchichttypen, schichtplanung, setSchichtplanung, mitarbeiter, setMitarbeiter, loading, error, fetchAll, schichttypenMap, mitarbeiterMap };
 }
