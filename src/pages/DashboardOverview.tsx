@@ -7,9 +7,8 @@ import { LivingAppsService, createRecordUrl, extractRecordId } from '@/services/
 import { formatDate } from '@/lib/formatters';
 import { useState, useMemo, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { IconAlertCircle, IconTool, IconRefresh, IconCheck, IconChevronLeft, IconChevronRight, IconPlus, IconPencil, IconTrash, IconUsers, IconCalendar, IconLayoutGrid, IconClock, IconCalendarPlus, IconListCheck } from '@tabler/icons-react';
+import { IconAlertCircle, IconTool, IconRefresh, IconCheck, IconChevronLeft, IconChevronRight, IconPlus, IconPencil, IconTrash, IconUsers, IconCalendarPlus, IconListCheck } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
-import { StatCard } from '@/components/StatCard';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { SchichtplanungDialog } from '@/components/dialogs/SchichtplanungDialog';
 import { AI_PHOTO_SCAN } from '@/config/ai-features';
@@ -96,12 +95,6 @@ export default function DashboardOverview() {
   }, [shiftsByDate]);
 
   // Stats
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const todayShifts = shiftsByDate.get(todayStr)?.length ?? 0;
-  const weekShifts = weekDays.reduce((acc, d) => {
-    const key = format(d, 'yyyy-MM-dd');
-    return acc + (shiftsByDate.get(key)?.length ?? 0);
-  }, 0);
   const confirmedCount = enrichedSchichtplanung.filter(s => s.fields.status?.key === 'bestaetigt').length;
   const absentCount = enrichedSchichtplanung.filter(s => s.fields.status?.key === 'abwesend').length;
 
@@ -229,34 +222,6 @@ export default function DashboardOverview() {
             Schicht hinzufügen
           </Button>
         </div>
-      </div>
-
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard
-          title="Heute"
-          value={String(todayShifts)}
-          description="Schichten heute"
-          icon={<IconCalendar size={18} className="text-muted-foreground" />}
-        />
-        <StatCard
-          title="Diese Woche"
-          value={String(weekShifts)}
-          description="Schichten dieser Woche"
-          icon={<IconLayoutGrid size={18} className="text-muted-foreground" />}
-        />
-        <StatCard
-          title="Mitarbeiter"
-          value={String(mitarbeiter.length)}
-          description="Aktive Mitarbeiter"
-          icon={<IconUsers size={18} className="text-muted-foreground" />}
-        />
-        <StatCard
-          title="Schichttypen"
-          value={String(schichttypen.length)}
-          description="Verfügbare Typen"
-          icon={<IconClock size={18} className="text-muted-foreground" />}
-        />
       </div>
 
       {/* Weekly calendar grid */}
@@ -451,9 +416,6 @@ function DashboardSkeleton() {
       <div className="flex items-center justify-between">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-9 w-36" />
-      </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}
       </div>
       <Skeleton className="h-64 rounded-2xl" />
     </div>
