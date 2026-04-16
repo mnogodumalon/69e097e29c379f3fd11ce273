@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { IconRefresh, IconHistory, IconLoader, IconChevronDown, IconCheck, IconClock, IconArrowBackUp, IconSparkles, IconMessageCircle } from '@tabler/icons-react';
+import { IconRefresh, IconHistory, IconLoader, IconChevronDown, IconCheck, IconClock, IconArrowBackUp, IconSparkles, IconMessageCircle, IconGitBranch } from '@tabler/icons-react';
 
 const APPGROUP_ID = '69e097e29c379f3fd11ce273';
 const UPDATE_ENDPOINT = '/claude/build/update';
@@ -223,18 +223,7 @@ export function VersionCheck() {
       {/* Versions panel */}
       {showPanel && (
         <div className="mx-3 mt-1 mb-2 rounded-xl border border-sidebar-border bg-sidebar overflow-hidden">
-          {/* Current version header */}
-          <div className="px-3 py-2 border-b border-sidebar-border">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-              <IconCheck size={13} className="text-primary shrink-0" />
-              Aktuelle Version
-            </div>
-            {deployedAt && (
-              <div className="text-[10px] text-muted-foreground mt-0.5 pl-5">{formatDeployedAt(deployedAt)}</div>
-            )}
-          </div>
-
-          {/* Update button inside panel */}
+          {/* Update button at top */}
           {updateAvailable && (
             <button
               onClick={handleUpdate}
@@ -256,8 +245,8 @@ export function VersionCheck() {
               Keine früheren Versionen
             </div>
           ) : (
-            <div className="max-h-60 overflow-y-auto">
-              {deployments.map((dep) => {
+            <div className="max-h-72 overflow-y-auto">
+              {deployments.map((dep, idx) => {
                 const meta = deploymentMeta(dep.source);
                 const Icon = meta.icon;
                 const rid = rollbackId(dep);
@@ -265,37 +254,55 @@ export function VersionCheck() {
                 const displayTime = dep.deployed_at
                   ? formatDeployedAt(dep.deployed_at)
                   : (dep.timestamp ? formatTimestamp(dep.timestamp) : '');
+                const prevBranch = idx > 0 ? deployments[idx - 1].branch : dep.branch;
+                const branchChanged = idx > 0 && dep.branch !== prevBranch;
+
                 return (
-                  <button
-                    key={rid || `${dep.branch}-${dep.deployed_at}`}
-                    onClick={() => handleRollback(dep)}
-                    disabled={dep.is_live || rollbackTarget === rid}
-                    className={`group flex items-center gap-2 w-full px-3 py-2 text-left text-xs hover:bg-sidebar-accent/30 transition-colors disabled:opacity-50 border-b border-sidebar-border last:border-b-0 ${meta.bgClass}`}
-                    title={dep.is_live ? 'Aktuelle Version' : undefined}
-                  >
-                    {dep.is_live ? (
-                      <IconCheck size={14} className="shrink-0 text-primary" />
-                    ) : (
-                      <>
-                        <Icon size={14} className={`shrink-0 ${meta.colorClass} group-hover:hidden`} />
-                        <IconArrowBackUp size={14} className="shrink-0 text-muted-foreground hidden group-hover:block" />
-                      </>
+                  <div key={rid || `${dep.branch}-${dep.deployed_at}`}>
+                    {/* Branch separator when switching between branches */}
+                    {branchChanged && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 border-b border-sidebar-border">
+                        <IconGitBranch size={11} className="text-violet-500 shrink-0" />
+                        <span className="text-[10px] font-medium text-violet-500">{dep.branch === 'main' ? 'Hauptlinie' : dep.branch}</span>
+                      </div>
                     )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-foreground font-medium">{displayTime}</span>
-                        {dep.version && <span className="text-muted-foreground/60">v{dep.version}</span>}
-                        {isAlternate && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-500 font-medium">
-                            Alternative Linie
-                          </span>
+                    <button
+                      onClick={() => handleRollback(dep)}
+                      disabled={dep.is_live || rollbackTarget === rid}
+                      className={`group flex items-center gap-2 w-full text-left text-xs transition-colors border-b border-sidebar-border last:border-b-0 ${
+                        dep.is_live
+                          ? 'bg-primary/5 border-l-[3px] border-l-primary pl-2.5 pr-3 py-2.5 cursor-default'
+                          : `px-3 py-2 hover:bg-sidebar-accent/30 disabled:opacity-50 ${meta.bgClass}`
+                      }`}
+                    >
+                      {dep.is_live ? (
+                        <IconCheck size={14} className="shrink-0 text-primary" />
+                      ) : (
+                        <>
+                          <Icon size={14} className={`shrink-0 ${meta.colorClass} group-hover:hidden`} />
+                          <IconArrowBackUp size={14} className="shrink-0 text-muted-foreground hidden group-hover:block" />
+                        </>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={dep.is_live ? 'text-foreground font-semibold' : 'text-foreground font-medium'}>{displayTime}</span>
+                          {dep.version && <span className="text-muted-foreground/60">v{dep.version}</span>}
+                          {dep.is_live && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-semibold uppercase tracking-wider">live</span>
+                          )}
+                          {isAlternate && !dep.is_live && (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-500 font-medium">
+                              <IconGitBranch size={9} />
+                              Alternative Linie
+                            </span>
+                          )}
+                        </div>
+                        {meta.label && (
+                          <div className={`text-[10px] mt-0.5 ${dep.is_live ? 'text-primary/70' : meta.colorClass}`}>{meta.label}</div>
                         )}
                       </div>
-                      {meta.label && (
-                        <div className={`text-[10px] ${meta.colorClass} mt-0.5`}>{meta.label}</div>
-                      )}
-                    </div>
-                  </button>
+                    </button>
+                  </div>
                 );
               })}
             </div>
