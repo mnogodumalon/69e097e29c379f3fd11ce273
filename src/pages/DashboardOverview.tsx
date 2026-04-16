@@ -7,7 +7,7 @@ import { LivingAppsService, createRecordUrl, extractRecordId } from '@/services/
 import { formatDate } from '@/lib/formatters';
 import { useState, useMemo, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { IconAlertCircle, IconTool, IconRefresh, IconCheck, IconChevronLeft, IconChevronRight, IconPlus, IconPencil, IconTrash, IconUsers, IconCalendar, IconLayoutGrid, IconClock } from '@tabler/icons-react';
+import { IconAlertCircle, IconTool, IconRefresh, IconCheck, IconChevronLeft, IconChevronRight, IconPlus, IconPencil, IconTrash, IconUsers, IconCalendar, IconLayoutGrid, IconClock, IconCalendarPlus, IconListCheck } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/StatCard';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -151,6 +151,36 @@ export default function DashboardOverview() {
 
   return (
     <div className="space-y-5 pb-8">
+      {/* Workflow intent cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <a
+          href="#/intents/schichtplanung-erstellen"
+          className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 border-l-4 border-l-primary overflow-hidden"
+        >
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <IconCalendarPlus size={20} className="text-primary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-foreground truncate">Schichtplanung anlegen</p>
+            <p className="text-sm text-muted-foreground line-clamp-2">Mehrere Mitarbeiter für einen Zeitraum in einem Schritt einplanen</p>
+          </div>
+          <IconChevronRight size={18} className="text-muted-foreground shrink-0" />
+        </a>
+        <a
+          href="#/intents/wochenplanung"
+          className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 border-l-4 border-l-primary overflow-hidden"
+        >
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <IconListCheck size={20} className="text-primary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-foreground truncate">Wochenplanung verwalten</p>
+            <p className="text-sm text-muted-foreground line-clamp-2">Schichtstatus für eine Woche prüfen und in einem Schritt bestätigen oder absagen</p>
+          </div>
+          <IconChevronRight size={18} className="text-muted-foreground shrink-0" />
+        </a>
+      </div>
+
       {/* Header row */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
