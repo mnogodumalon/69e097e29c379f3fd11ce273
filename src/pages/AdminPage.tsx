@@ -1,13 +1,13 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useDashboardData } from '@/hooks/useDashboardData';
-import type { Mitarbeiter, Schichttypen, Schichtplanung } from '@/types/app';
+import type { Schichttypen, Schichtplanung, Mitarbeiter } from '@/types/app';
 import { LivingAppsService, extractRecordId, cleanFieldsForApi } from '@/services/livingAppsService';
-import { MitarbeiterDialog } from '@/components/dialogs/MitarbeiterDialog';
-import { MitarbeiterViewDialog } from '@/components/dialogs/MitarbeiterViewDialog';
 import { SchichttypenDialog } from '@/components/dialogs/SchichttypenDialog';
 import { SchichttypenViewDialog } from '@/components/dialogs/SchichttypenViewDialog';
 import { SchichtplanungDialog } from '@/components/dialogs/SchichtplanungDialog';
 import { SchichtplanungViewDialog } from '@/components/dialogs/SchichtplanungViewDialog';
+import { MitarbeiterDialog } from '@/components/dialogs/MitarbeiterDialog';
+import { MitarbeiterViewDialog } from '@/components/dialogs/MitarbeiterViewDialog';
 import { BulkEditDialog } from '@/components/dialogs/BulkEditDialog';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageShell } from '@/components/PageShell';
@@ -34,18 +34,6 @@ function fmtDate(d?: string) {
 }
 
 // Field metadata per entity for bulk edit and column filters
-const MITARBEITER_FIELDS = [
-  { key: 'vorname', label: 'Vorname', type: 'string/text' },
-  { key: 'nachname', label: 'Nachname', type: 'string/text' },
-  { key: 'personalnummer', label: 'Personalnummer', type: 'string/text' },
-  { key: 'abteilung', label: 'Abteilung', type: 'string/text' },
-  { key: 'position', label: 'Position / Funktion', type: 'string/text' },
-  { key: 'telefon', label: 'Telefonnummer', type: 'string/tel' },
-  { key: 'email', label: 'E-Mail-Adresse', type: 'string/email' },
-  { key: 'beschaeftigungsart', label: 'Beschäftigungsart', type: 'lookup/select', options: [{ key: 'vollzeit', label: 'Vollzeit' }, { key: 'teilzeit', label: 'Teilzeit' }, { key: 'minijob', label: 'Minijob' }, { key: 'aushilfe', label: 'Aushilfe' }, { key: 'praktikant', label: 'Praktikant' }] },
-  { key: 'eintrittsdatum', label: 'Eintrittsdatum', type: 'date/date' },
-  { key: 'bemerkung', label: 'Bemerkung', type: 'string/textarea' },
-];
 const SCHICHTTYPEN_FIELDS = [
   { key: 'schichtname', label: 'Schichtname', type: 'string/text' },
   { key: 'kuerzel', label: 'Kürzel', type: 'string/text' },
@@ -64,11 +52,23 @@ const SCHICHTPLANUNG_FIELDS = [
   { key: 'status', label: 'Status', type: 'lookup/select', options: [{ key: 'geplant', label: 'Geplant' }, { key: 'bestaetigt', label: 'Bestätigt' }, { key: 'abwesend', label: 'Abwesend' }, { key: 'vertreter', label: 'Vertreter' }] },
   { key: 'notiz', label: 'Notiz', type: 'string/textarea' },
 ];
+const MITARBEITER_FIELDS = [
+  { key: 'vorname', label: 'Vorname', type: 'string/text' },
+  { key: 'nachname', label: 'Nachname', type: 'string/text' },
+  { key: 'personalnummer', label: 'Personalnummer', type: 'string/text' },
+  { key: 'abteilung', label: 'Abteilung', type: 'string/text' },
+  { key: 'position', label: 'Position / Funktion', type: 'string/text' },
+  { key: 'telefon', label: 'Telefonnummer', type: 'string/tel' },
+  { key: 'email', label: 'E-Mail-Adresse', type: 'string/email' },
+  { key: 'beschaeftigungsart', label: 'Beschäftigungsart', type: 'lookup/select', options: [{ key: 'vollzeit', label: 'Vollzeit' }, { key: 'teilzeit', label: 'Teilzeit' }, { key: 'minijob', label: 'Minijob' }, { key: 'aushilfe', label: 'Aushilfe' }, { key: 'praktikant', label: 'Praktikant' }] },
+  { key: 'eintrittsdatum', label: 'Eintrittsdatum', type: 'date/date' },
+  { key: 'bemerkung', label: 'Bemerkung', type: 'string/textarea' },
+];
 
 const ENTITY_TABS = [
-  { key: 'mitarbeiter', label: 'Mitarbeiter', pascal: 'Mitarbeiter' },
   { key: 'schichttypen', label: 'Schichttypen', pascal: 'Schichttypen' },
   { key: 'schichtplanung', label: 'Schichtplanung', pascal: 'Schichtplanung' },
+  { key: 'mitarbeiter', label: 'Mitarbeiter', pascal: 'Mitarbeiter' },
 ] as const;
 
 type EntityKey = typeof ENTITY_TABS[number]['key'];
@@ -77,16 +77,16 @@ export default function AdminPage() {
   const data = useDashboardData();
   const { loading, error, fetchAll } = data;
 
-  const [activeTab, setActiveTab] = useState<EntityKey>('mitarbeiter');
+  const [activeTab, setActiveTab] = useState<EntityKey>('schichttypen');
   const [selectedIds, setSelectedIds] = useState<Record<EntityKey, Set<string>>>(() => ({
-    'mitarbeiter': new Set(),
     'schichttypen': new Set(),
     'schichtplanung': new Set(),
+    'mitarbeiter': new Set(),
   }));
   const [filters, setFilters] = useState<Record<EntityKey, Record<string, string>>>(() => ({
-    'mitarbeiter': {},
     'schichttypen': {},
     'schichtplanung': {},
+    'mitarbeiter': {},
   }));
   const [showFilters, setShowFilters] = useState(false);
   const [dialogState, setDialogState] = useState<{ entity: EntityKey; record: any } | null>(null);
@@ -101,9 +101,9 @@ export default function AdminPage() {
 
   const getRecords = useCallback((entity: EntityKey) => {
     switch (entity) {
-      case 'mitarbeiter': return (data as any).mitarbeiter as Mitarbeiter[] ?? [];
       case 'schichttypen': return (data as any).schichttypen as Schichttypen[] ?? [];
       case 'schichtplanung': return (data as any).schichtplanung as Schichtplanung[] ?? [];
+      case 'mitarbeiter': return (data as any).mitarbeiter as Mitarbeiter[] ?? [];
       default: return [];
     }
   }, [data]);
@@ -138,9 +138,9 @@ export default function AdminPage() {
 
   const getFieldMeta = useCallback((entity: EntityKey) => {
     switch (entity) {
-      case 'mitarbeiter': return MITARBEITER_FIELDS;
       case 'schichttypen': return SCHICHTTYPEN_FIELDS;
       case 'schichtplanung': return SCHICHTPLANUNG_FIELDS;
+      case 'mitarbeiter': return MITARBEITER_FIELDS;
       default: return [];
     }
   }, []);
@@ -235,11 +235,6 @@ export default function AdminPage() {
 
   const getServiceMethods = useCallback((entity: EntityKey) => {
     switch (entity) {
-      case 'mitarbeiter': return {
-        create: (fields: any) => LivingAppsService.createMitarbeiterEntry(fields),
-        update: (id: string, fields: any) => LivingAppsService.updateMitarbeiterEntry(id, fields),
-        remove: (id: string) => LivingAppsService.deleteMitarbeiterEntry(id),
-      };
       case 'schichttypen': return {
         create: (fields: any) => LivingAppsService.createSchichttypenEntry(fields),
         update: (id: string, fields: any) => LivingAppsService.updateSchichttypenEntry(id, fields),
@@ -249,6 +244,11 @@ export default function AdminPage() {
         create: (fields: any) => LivingAppsService.createSchichtplanungEntry(fields),
         update: (id: string, fields: any) => LivingAppsService.updateSchichtplanungEntry(id, fields),
         remove: (id: string) => LivingAppsService.deleteSchichtplanungEntry(id),
+      };
+      case 'mitarbeiter': return {
+        create: (fields: any) => LivingAppsService.createMitarbeiterEntry(fields),
+        update: (id: string, fields: any) => LivingAppsService.updateMitarbeiterEntry(id, fields),
+        remove: (id: string) => LivingAppsService.deleteMitarbeiterEntry(id),
       };
       default: return null;
     }
@@ -577,16 +577,6 @@ export default function AdminPage() {
         </Table>
       </div>
 
-      {(createEntity === 'mitarbeiter' || dialogState?.entity === 'mitarbeiter') && (
-        <MitarbeiterDialog
-          open={createEntity === 'mitarbeiter' || dialogState?.entity === 'mitarbeiter'}
-          onClose={() => { setCreateEntity(null); setDialogState(null); }}
-          onSubmit={dialogState?.entity === 'mitarbeiter' ? handleUpdate : (fields: any) => handleCreate('mitarbeiter', fields)}
-          defaultValues={dialogState?.entity === 'mitarbeiter' ? dialogState.record?.fields : undefined}
-          enablePhotoScan={AI_PHOTO_SCAN['Mitarbeiter']}
-          enablePhotoLocation={AI_PHOTO_LOCATION['Mitarbeiter']}
-        />
-      )}
       {(createEntity === 'schichttypen' || dialogState?.entity === 'schichttypen') && (
         <SchichttypenDialog
           open={createEntity === 'schichttypen' || dialogState?.entity === 'schichttypen'}
@@ -609,12 +599,14 @@ export default function AdminPage() {
           enablePhotoLocation={AI_PHOTO_LOCATION['Schichtplanung']}
         />
       )}
-      {viewState?.entity === 'mitarbeiter' && (
-        <MitarbeiterViewDialog
-          open={viewState?.entity === 'mitarbeiter'}
-          onClose={() => setViewState(null)}
-          record={viewState?.record}
-          onEdit={(r: any) => { setViewState(null); setDialogState({ entity: 'mitarbeiter', record: r }); }}
+      {(createEntity === 'mitarbeiter' || dialogState?.entity === 'mitarbeiter') && (
+        <MitarbeiterDialog
+          open={createEntity === 'mitarbeiter' || dialogState?.entity === 'mitarbeiter'}
+          onClose={() => { setCreateEntity(null); setDialogState(null); }}
+          onSubmit={dialogState?.entity === 'mitarbeiter' ? handleUpdate : (fields: any) => handleCreate('mitarbeiter', fields)}
+          defaultValues={dialogState?.entity === 'mitarbeiter' ? dialogState.record?.fields : undefined}
+          enablePhotoScan={AI_PHOTO_SCAN['Mitarbeiter']}
+          enablePhotoLocation={AI_PHOTO_LOCATION['Mitarbeiter']}
         />
       )}
       {viewState?.entity === 'schichttypen' && (
@@ -633,6 +625,14 @@ export default function AdminPage() {
           onEdit={(r: any) => { setViewState(null); setDialogState({ entity: 'schichtplanung', record: r }); }}
           mitarbeiterList={(data as any).mitarbeiter ?? []}
           schichttypenList={(data as any).schichttypen ?? []}
+        />
+      )}
+      {viewState?.entity === 'mitarbeiter' && (
+        <MitarbeiterViewDialog
+          open={viewState?.entity === 'mitarbeiter'}
+          onClose={() => setViewState(null)}
+          record={viewState?.record}
+          onEdit={(r: any) => { setViewState(null); setDialogState({ entity: 'mitarbeiter', record: r }); }}
         />
       )}
 

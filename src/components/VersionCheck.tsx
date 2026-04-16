@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { IconRefresh, IconHistory, IconLoader, IconChevronDown, IconCheck, IconClock, IconArrowBackUp, IconSparkles, IconMessageCircle } from '@tabler/icons-react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
+import { IconRefresh, IconHistory, IconLoader, IconChevronDown, IconCheck, IconClock, IconArrowBackUp, IconSparkles, IconMessageCircle, IconGitBranch, IconArrowLeft } from '@tabler/icons-react';
 
 const APPGROUP_ID = '69e097e29c379f3fd11ce273';
 const UPDATE_ENDPOINT = '/claude/build/update';
@@ -74,6 +74,7 @@ export function VersionCheck() {
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [loadingDeployments, setLoadingDeployments] = useState(false);
   const [rollbackTarget, setRollbackTarget] = useState<string | null>(null);
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -221,21 +222,29 @@ export function VersionCheck() {
       )}
 
       {/* Versions panel */}
-      {showPanel && (
-        <div className="mx-3 mt-1 mb-2 rounded-xl border border-sidebar-border bg-sidebar overflow-hidden">
-          {/* Current version header */}
-          <div className="px-3 py-2 border-b border-sidebar-border">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-              <IconCheck size={13} className="text-primary shrink-0" />
-              Aktuelle Version
-            </div>
-            {deployedAt && (
-              <div className="text-[10px] text-muted-foreground mt-0.5 pl-5">{formatDeployedAt(deployedAt)}</div>
-            )}
-          </div>
+      {showPanel && (() => {
+        // Group deployments by branch
+        const grouped = new Map<string, Deployment[]>();
+        for (const d of deployments) {
+          const key = d.branch || 'main';
+          if (!grouped.has(key)) grouped.set(key, []);
+          grouped.get(key)!.push(d);
+        }
+        const liveDep = deployments.find(d => d.is_live);
+        const liveBranch = liveDep?.branch || 'main';
+        const mainDeps = grouped.get('main') || [];
+        const altKeys = [...grouped.keys()].filter(k => k !== 'main')
+          .sort((a, b) => {
+            const at = grouped.get(a)![0]?.deployed_at || '';
+            const bt = grouped.get(b)![0]?.deployed_at || '';
+            return bt.localeCompare(at);
+          });
+        const branchEntries = selectedBranch ? (grouped.get(selectedBranch) || []) : [];
 
-          {/* Update button inside panel */}
-          {updateAvailable && (
+        return (
+        <div className="mx-3 mt-1 mb-2 rounded-xl border border-sidebar-border bg-sidebar overflow-hidden">
+          {/* Update button at top */}
+          {updateAvailable && !selectedBranch && (
             <button
               onClick={handleUpdate}
               className="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium text-[#2563eb] bg-secondary/50 hover:bg-secondary border-b border-sidebar-border transition-colors"
@@ -245,7 +254,6 @@ export function VersionCheck() {
             </button>
           )}
 
-          {/* Deployments list */}
           {loadingDeployments ? (
             <div className="flex items-center justify-center gap-2 px-3 py-3 text-xs text-muted-foreground">
               <IconLoader size={13} className="animate-spin" />
@@ -255,23 +263,37 @@ export function VersionCheck() {
             <div className="px-3 py-3 text-xs text-muted-foreground text-center">
               Keine früheren Versionen
             </div>
-          ) : (
-            <div className="max-h-60 overflow-y-auto">
-              {deployments.map((dep) => {
+
+          /* ── Ebene 2: Version list for selected branch ── */
+          ) : selectedBranch ? (
+            <div className="max-h-72 overflow-y-auto">
+              {/* Back button */}
+              <button
+                onClick={() => setSelectedBranch(null)}
+                className="flex items-center gap-1.5 w-full px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground border-b border-sidebar-border transition-colors"
+              >
+                <IconArrowLeft size={13} className="shrink-0" />
+                {selectedBranch === 'main' ? 'Hauptlinie' : 'Alternative Richtung'}
+              </button>
+
+              {/* Version entries */}
+              {branchEntries.map((dep) => {
                 const meta = deploymentMeta(dep.source);
                 const Icon = meta.icon;
                 const rid = rollbackId(dep);
-                const isAlternate = dep.branch && dep.branch !== 'main';
                 const displayTime = dep.deployed_at
                   ? formatDeployedAt(dep.deployed_at)
                   : (dep.timestamp ? formatTimestamp(dep.timestamp) : '');
                 return (
                   <button
-                    key={rid || `${dep.branch}-${dep.deployed_at}`}
+                    key={rid || dep.deployed_at}
                     onClick={() => handleRollback(dep)}
                     disabled={dep.is_live || rollbackTarget === rid}
-                    className={`group flex items-center gap-2 w-full px-3 py-2 text-left text-xs hover:bg-sidebar-accent/30 transition-colors disabled:opacity-50 border-b border-sidebar-border last:border-b-0 ${meta.bgClass}`}
-                    title={dep.is_live ? 'Aktuelle Version' : undefined}
+                    className={`group flex items-center gap-2 w-full text-left text-xs transition-colors border-b border-sidebar-border last:border-b-0 ${
+                      dep.is_live
+                        ? 'bg-primary/5 border-l-[3px] border-l-primary pl-2.5 pr-3 py-2.5 cursor-default'
+                        : 'px-3 py-2 hover:bg-sidebar-accent/30 disabled:opacity-50'
+                    }`}
                   >
                     {dep.is_live ? (
                       <IconCheck size={14} className="shrink-0 text-primary" />
@@ -282,26 +304,104 @@ export function VersionCheck() {
                       </>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-foreground font-medium">{displayTime}</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={dep.is_live ? 'text-foreground font-semibold' : 'text-foreground font-medium'}>{displayTime}</span>
                         {dep.version && <span className="text-muted-foreground/60">v{dep.version}</span>}
-                        {isAlternate && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-500 font-medium">
-                            Alternative Linie
-                          </span>
+                        {dep.is_live && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-semibold uppercase tracking-wider">live</span>
                         )}
                       </div>
                       {meta.label && (
-                        <div className={`text-[10px] ${meta.colorClass} mt-0.5`}>{meta.label}</div>
+                        <div className={`text-[10px] mt-0.5 ${dep.is_live ? 'text-primary/70' : meta.colorClass}`}>{meta.label}</div>
                       )}
                     </div>
                   </button>
                 );
               })}
             </div>
+
+          /* ── Ebene 1: Branch graph overview ── */
+          ) : (
+            <div className="max-h-72 overflow-y-auto">
+              {/* Main branch card */}
+              <button
+                onClick={() => setSelectedBranch('main')}
+                className="w-full px-3 py-3 text-left hover:bg-sidebar-accent/20 transition-colors border-b border-sidebar-border"
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-semibold text-foreground">Hauptlinie</span>
+                  <div className="flex items-center gap-1.5">
+                    {liveBranch === 'main' && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-semibold uppercase tracking-wider">live</span>
+                    )}
+                    <IconChevronDown size={12} className="-rotate-90 text-muted-foreground" />
+                  </div>
+                </div>
+                {/* Dot-line */}
+                <div className="flex items-center gap-0 mb-1">
+                  {Array.from({ length: Math.min(mainDeps.length, 8) }).map((_, i) => (
+                    <Fragment key={i}>
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${liveBranch === 'main' ? 'bg-primary' : 'bg-muted-foreground'}`} />
+                      {i < Math.min(mainDeps.length, 8) - 1 && (
+                        <div className={`w-3 h-0.5 ${liveBranch === 'main' ? 'bg-primary/40' : 'bg-border'}`} />
+                      )}
+                    </Fragment>
+                  ))}
+                  {mainDeps.length > 8 && <span className="text-[9px] text-muted-foreground ml-1">+{mainDeps.length - 8}</span>}
+                </div>
+                <span className="text-[10px] text-muted-foreground">
+                  {mainDeps.length} {mainDeps.length === 1 ? 'Version' : 'Versionen'}
+                </span>
+              </button>
+
+              {/* Alternative branches */}
+              {altKeys.length > 0 && (
+                <div className="ml-4 border-l-2 border-violet-300/50">
+                  {altKeys.map((branchKey, idx) => {
+                    const deps = grouped.get(branchKey)!;
+                    const hasLive = branchKey === liveBranch;
+                    return (
+                      <button
+                        key={branchKey}
+                        onClick={() => setSelectedBranch(branchKey)}
+                        className={`w-full pl-3 pr-3 py-3 text-left hover:bg-sidebar-accent/20 transition-colors ${idx < altKeys.length - 1 ? 'border-b border-sidebar-border' : ''}`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs font-medium text-foreground">
+                            Alternative Richtung{altKeys.length > 1 ? ` ${idx + 1}` : ''}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {hasLive && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-500 font-semibold uppercase tracking-wider">live</span>
+                            )}
+                            <IconChevronDown size={12} className="-rotate-90 text-muted-foreground" />
+                          </div>
+                        </div>
+                        {/* Dot-line */}
+                        <div className="flex items-center gap-0 mb-1">
+                          {Array.from({ length: Math.min(deps.length, 8) }).map((_, i) => (
+                            <Fragment key={i}>
+                              <div className={`w-2 h-2 rounded-full shrink-0 ${hasLive ? 'bg-violet-500' : 'bg-violet-400'}`} />
+                              {i < Math.min(deps.length, 8) - 1 && (
+                                <div className={`w-3 h-0.5 ${hasLive ? 'bg-violet-300' : 'bg-violet-200'}`} />
+                              )}
+                            </Fragment>
+                          ))}
+                          {deps.length > 8 && <span className="text-[9px] text-muted-foreground ml-1">+{deps.length - 8}</span>}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">
+                          {deps.length} {deps.length === 1 ? 'Version' : 'Versionen'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {status === 'error' && (
         <div className="mx-3 mt-1 px-3 py-1.5 text-xs text-destructive bg-destructive/10 rounded-lg">
