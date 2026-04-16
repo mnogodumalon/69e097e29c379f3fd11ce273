@@ -416,6 +416,53 @@ export default function DashboardOverview() {
         <span className="ml-auto text-xs text-muted-foreground">{confirmedCount} bestätigt · {absentCount} abwesend</span>
       </div>
 
+      {/* Mitarbeiter Übersicht */}
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b border-border bg-muted/40 flex items-center gap-2">
+          <IconUsers size={16} className="text-muted-foreground shrink-0" />
+          <span className="text-sm font-semibold text-foreground">Alle Mitarbeiter</span>
+          <span className="ml-auto text-xs text-muted-foreground">{mitarbeiter.length} gesamt</span>
+        </div>
+        {mitarbeiter.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-2">
+            <IconUsers size={36} className="text-muted-foreground" stroke={1.5} />
+            <p className="text-sm text-muted-foreground">Keine Mitarbeiter vorhanden.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 divide-y sm:divide-y-0 sm:divide-x-0">
+            {mitarbeiter.map((ma, idx) => (
+              <div
+                key={ma.record_id}
+                className={`flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 ${idx % 2 === 1 ? 'bg-muted/20' : ''}`}
+              >
+                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-sm font-bold text-primary">
+                  {(ma.fields.vorname?.[0] ?? '').toUpperCase()}{(ma.fields.nachname?.[0] ?? '').toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-foreground truncate">
+                    {ma.fields.vorname} {ma.fields.nachname}
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {ma.fields.position && (
+                      <span className="text-xs text-muted-foreground truncate">{ma.fields.position}</span>
+                    )}
+                    {ma.fields.abteilung && (
+                      <span className="text-xs text-muted-foreground truncate">· {ma.fields.abteilung}</span>
+                    )}
+                    {ma.fields.beschaeftigungsart && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{ma.fields.beschaeftigungsart.label}</span>
+                    )}
+                  </div>
+                </div>
+                {ma.fields.telefon && (
+                  <span className="text-xs text-muted-foreground shrink-0 hidden sm:block truncate max-w-[100px]">{ma.fields.telefon}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Dialog */}
       <SchichtplanungDialog
         open={dialogOpen}
