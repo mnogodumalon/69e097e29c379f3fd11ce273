@@ -1,7 +1,7 @@
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { enrichSchichtplanung } from '@/lib/enrich';
 import type { EnrichedSchichtplanung } from '@/types/enriched';
-import type { Schichtplanung } from '@/types/app';
+import type { Schichtplanung, Mitarbeiter } from '@/types/app';
 import { APP_IDS } from '@/types/app';
 import { LivingAppsService, createRecordUrl, extractRecordId } from '@/services/livingAppsService';
 import { formatDate } from '@/lib/formatters';
@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/StatCard';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { SchichtplanungDialog } from '@/components/dialogs/SchichtplanungDialog';
+import { MitarbeiterViewDialog } from '@/components/dialogs/MitarbeiterViewDialog';
+import { MitarbeiterDialog } from '@/components/dialogs/MitarbeiterDialog';
 import { AI_PHOTO_SCAN } from '@/config/ai-features';
 import { addDays, startOfWeek, format, isSameDay, parseISO, isToday } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -52,6 +54,8 @@ export default function DashboardOverview() {
   const [prefillDate, setPrefillDate] = useState<string | undefined>(undefined);
   const [prefillMitarbeiter, setPrefillMitarbeiter] = useState<string | undefined>(undefined);
   const [selectedMitarbeiter, setSelectedMitarbeiter] = useState<string>('all');
+  const [viewMitarbeiter, setViewMitarbeiter] = useState<Mitarbeiter | null>(null);
+  const [editMitarbeiter, setEditMitarbeiter] = useState<Mitarbeiter | null>(null);
 
   // Week days (Mon–Sun)
   const weekDays = useMemo(() => {
@@ -433,7 +437,8 @@ export default function DashboardOverview() {
             {mitarbeiter.map((ma, idx) => (
               <div
                 key={ma.record_id}
-                className={`flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 ${idx % 2 === 1 ? 'bg-muted/20' : ''}`}
+                className={`flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 cursor-pointer hover:bg-accent/40 transition-colors ${idx % 2 === 1 ? 'bg-muted/20' : ''}`}
+                onClick={() => setViewMitarbeiter(ma)}
               >
                 <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-sm font-bold text-primary">
                   {(ma.fields.vorname?.[0] ?? '').toUpperCase()}{(ma.fields.nachname?.[0] ?? '').toUpperCase()}
@@ -462,6 +467,24 @@ export default function DashboardOverview() {
           </div>
         )}
       </div>
+
+      {/* Mitarbeiter View + Edit Dialoge */}
+      <MitarbeiterViewDialog
+        open={!!viewMitarbeiter}
+        onClose={() => setViewMitarbeiter(null)}
+        record={viewMitarbeiter}
+        onEdit={(rec) => { setViewMitarbeiter(null); setEditMitarbeiter(rec); }}
+      />
+      <MitarbeiterDialog
+        open={!!editMitarbeiter}
+        onClose={() => setEditMitarbeiter(null)}
+        onSubmit={async (fields) => {
+          if (!editMitarbeiter) return;
+          await LivingAppsService.updateMitarbeiterEntry(editMitarbeiter.record_id, fields);
+          fetchAll();
+        }}
+        defaultValues={editMitarbeiter?.fields}
+      />
 
       {/* Dialog */}
       <SchichtplanungDialog
